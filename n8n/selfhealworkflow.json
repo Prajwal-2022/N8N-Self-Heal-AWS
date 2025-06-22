@@ -1,0 +1,262 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "self-heal",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        100
+      ],
+      "id": "346fea01-fb7a-4b4c-b641-02fccbe1e255",
+      "name": "Webhook",
+      "webhookId": "21c15670-9c90-4c02-b7d1-1136e5cf2924"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "=={{ $json[\"NewStateValue\"] && $json[\"NewStateValue\"].toString().trim().toUpperCase() }}\n",
+                    "rightValue": "ALARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "5ff40da8-f328-4d0d-b97a-485cfe7e82ad"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alarmMatched"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        180,
+        200
+      ],
+      "id": "33c3c893-02f9-4f40-b70c-0c5fc4fbd15f",
+      "name": "Switch",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "function": "arn:aws:lambda:us-east-1:859024677577:function:SelfHealRebootFunction",
+        "payload": "={\n  \"instanceId\": \"{{ $json[\"instanceId\"] }}\"\n}"
+      },
+      "type": "n8n-nodes-base.awsLambda",
+      "typeVersion": 1,
+      "position": [
+        620,
+        200
+      ],
+      "id": "9d2e7e26-f7fc-43c4-ac56-046dd01ff799",
+      "name": "AWS Lambda",
+      "credentials": {
+        "aws": {
+          "id": "Svwba2sBVZIkhZct",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "aiineverything01@gmail.com",
+        "toEmail": "prajwalkasar15@gmail.com",
+        "subject": "This is workflow message for self heal reboot proof of cocept",
+        "html": "<h1>Self Heal Action Triggered</h1>\n<p>The EC2 instance reboot Lambda function was invoked successfully.</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        840,
+        200
+      ],
+      "id": "7a7088d3-0897-4270-8e03-6d4f30f14f85",
+      "name": "Send Email",
+      "webhookId": "8b3d4f1f-1815-49ff-8bd2-4ecf748626d6",
+      "credentials": {
+        "smtp": {
+          "id": "oZPmyM00zDa17juR",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "552af9ae-93ca-42dd-8fac-8b5ec8888e85",
+              "leftValue": "={{$json[\"Type\"]}}",
+              "rightValue": "SubscriptionConfirmation",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -40,
+        100
+      ],
+      "id": "63bd1cef-1e04-455b-aedd-53a4e81b958d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = typeof $json.body === 'string' ? JSON.parse($json.body) : $json.body;\n\nif (body.Type === 'Notification' && body.Message) {\n  const parsedMessage = JSON.parse(body.Message);\n  \n  // Merge parsed message FIRST to make NewStateValue visible at top\n  return [{ json: { ...parsedMessage, ...body } }];\n} else {\n  return [{ json: body }];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        100
+      ],
+      "id": "191298bc-b4fd-4c73-b181-e11c3ef511f1",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"SubscribeURL\"]}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        180,
+        0
+      ],
+      "id": "f079af3c-6cbb-4c7c-9f17-af03de910c57",
+      "name": "HTTP Request",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    instanceId: $json[\"Trigger\"][\"Dimensions\"][0][\"value\"]\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        200
+      ],
+      "id": "c6fd9bdb-512e-412f-997b-6e97b5a14f79",
+      "name": "Code2"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS Lambda": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "AWS Lambda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0da2c41329cd74feb80bc14d97238f97ec3404030d4a7133dd10be91904993ea"
+  }
+}
